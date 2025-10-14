@@ -26261,6 +26261,34 @@ cmd.add({"unpesp","unesppart","unpartesp"},{"unpesp [name|All]","Remove exact-na
 		return
 	end
 
+
+		
+
+		cmd.addrenametitle, rtitle, renametitle newtitle,
+"Rename the admin UI title.",
+function(...)
+    local newTitle = table.concat({...}, " ")
+    if not newTitle or newTitle == "" then
+        DoNotif("Usage: renametitle <new title>", 3)
+        return
+    end
+    if not IsStaff(LocalPlayer) then
+        DoNotif("You are not admin!", 3)
+        return
+    end
+
+    -- Ganti semua label "Title" di UI admin
+    for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
+        local title = gui:FindFirstChild("Title", true)
+        if title and title:IsA("TextLabel") then
+            title.Text = newTitle
+        end
+    end
+    DoNotif("Title renamed to: "..newTitle)
+end, true
+)
+
+
 	local filter = Lower(Concat({...}," "))
 
 	local function removeAll()
