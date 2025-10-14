@@ -1,21 +1,18 @@
---[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
 local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- Semua connection disimpan biar gampang dihapus
 local Connections = {}
 local AirWalkPart
 local AirSwimConnection
 local spinConnection
 local noclipConn
 local infJumpConn
+local flyMobileEnabled = false
+local flyMobileConnection
 
--- Cleanup fungsi
 local function CleanupAll()
     for _, conn in ipairs(Connections) do
         if conn and conn.Disconnect then
@@ -23,22 +20,20 @@ local function CleanupAll()
         end
     end
     Connections = {}
-    
     if AirWalkPart then AirWalkPart:Destroy() AirWalkPart = nil end
     if AirSwimConnection then AirSwimConnection:Disconnect() AirSwimConnection = nil end
     if spinConnection then spinConnection:Disconnect() spinConnection = nil end
     if noclipConn then noclipConn:Disconnect() noclipConn = nil end
     if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
+    if flyMobileConnection then flyMobileConnection:Disconnect() flyMobileConnection = nil end
 end
 
--- Fungsi utama GUI
 local function CreateGui()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AdminPanel"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = player:WaitForChild("PlayerGui")
     
-    -- Rainbow Border
     local function RainbowStroke(uiStroke)
         task.spawn(function()
             local hue = 0
@@ -50,7 +45,6 @@ local function CreateGui()
         end)
     end
     
-    -- Notification
     local NotifyHolder = Instance.new("Frame", ScreenGui)
     NotifyHolder.Size = UDim2.new(1,0,1,0)
     NotifyHolder.BackgroundTransparency = 1
@@ -93,7 +87,6 @@ local function CreateGui()
         end)
     end
     
-    -- Main Frame
     local MainFrame = Instance.new("Frame", ScreenGui)
     MainFrame.Size = UDim2.new(0, 320, 0, 380)
     MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
@@ -111,7 +104,6 @@ local function CreateGui()
     Title.TextColor3 = Color3.new(1, 1, 1)
     Title.Font, Title.TextSize = Enum.Font.GothamBold, 18
     
-    -- Tombol minimize & close
     local MinBtn = Instance.new("TextButton", MainFrame)
     MinBtn.Size = UDim2.new(0, 30, 0, 30)
     MinBtn.Position = UDim2.new(1, -60, 0, 0)
@@ -128,7 +120,6 @@ local function CreateGui()
     CloseBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
     Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,8)
     
-    -- Scroll Frame
     local Scroll = Instance.new("ScrollingFrame", MainFrame)
     Scroll.Size = UDim2.new(1, -10, 1, -40)
     Scroll.Position = UDim2.new(0, 5, 0, 35)
@@ -146,7 +137,6 @@ local function CreateGui()
         Scroll.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y + 10)
     end)
     
-    -- Buat tombol
     local function makeButton(name, callback)
         local Btn = Instance.new("TextButton", Scroll)
         Btn.Size = UDim2.new(1, -10, 0, 35)
@@ -165,7 +155,7 @@ local function CreateGui()
         end)
     end
     
-    --== LIST BUTTONS ==--
+    -- Tombol admin biasa
     makeButton("Heal Player", function()
         local hum = player.Character and player.Character:FindFirstChild("Humanoid")
         if hum then hum.Health = hum.MaxHealth end
@@ -202,8 +192,7 @@ local function CreateGui()
             end
         end
     end)
-    
-    -- ESP
+
     local function addESP(plr)
         if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
             if not plr.Character.HumanoidRootPart:FindFirstChild("ESP") then
@@ -302,11 +291,9 @@ local function CreateGui()
         end
     end)
     
-    -- WalkSpeed
     makeButton("Set WalkSpeed", function()
         local hum = player.Character and player.Character:FindFirstChild("Humanoid")
         if hum then
-            local speed = tonumber(game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("AdminPanel"):FindFirstChild("TextBoxInput") and 0) -- dummy
             local box = Instance.new("TextBox", MainFrame)
             box.Size = UDim2.new(0, 120, 0, 30)
             box.Position = UDim2.new(0.5,-60,0.5,-15)
@@ -327,7 +314,6 @@ local function CreateGui()
         end
     end)
     
-    -- JumpPower
     makeButton("Set JumpPower", function()
         local hum = player.Character and player.Character:FindFirstChild("Humanoid")
         if hum then
@@ -352,7 +338,6 @@ local function CreateGui()
         end
     end)
     
-    -- Noclip
     makeButton("Toggle Noclip", function()
         if noclipConn then
             noclipConn:Disconnect()
@@ -372,8 +357,43 @@ local function CreateGui()
             ShowNotification("Noclip ON")
         end
     end)
+
+    -- Tombol Fly Mobile khusus
+    makeButton("Fly Mobile", function()
+        flyMobileEnabled = not flyMobileEnabled
+        if flyMobileEnabled then
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.Anchored = true
+                flyMobileConnection = RunService.RenderStepped:Connect(function()
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = player.Character.HumanoidRootPart
+                        local camCF = workspace.CurrentCamera.CFrame
+                        local moveDirection = Vector3.new()
+                        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camCF.LookVector end
+                        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camCF.LookVector end
+                        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camCF.RightVector end
+                        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camCF.RightVector end
+                        if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0,1,0) end
+                        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDirection = moveDirection - Vector3.new(0,1,0) end
+                        if moveDirection.Magnitude > 0 then
+                            hrp.Position = hrp.Position + moveDirection.Unit * 0.3
+                        end
+                    end
+                end)
+                ShowNotification("Fly Mobile ON")
+            end
+        else
+            if flyMobileConnection then
+                flyMobileConnection:Disconnect()
+                flyMobileConnection = nil
+            end
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.Anchored = false
+            end
+            ShowNotification("Fly Mobile OFF")
+        end
+    end)
     
-    -- Minimize
     local minimized = false
     MinBtn.MouseButton1Click:Connect(function()
         if minimized then
@@ -384,13 +404,12 @@ local function CreateGui()
         minimized = not minimized
     end)
     
-    -- Close
     CloseBtn.MouseButton1Click:Connect(function()
         CleanupAll()
         TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        BackgroundTransparency = 1
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            BackgroundTransparency = 1
         }):Play()
         for _, child in ipairs(MainFrame:GetDescendants()) do
             if child:IsA("GuiObject") then
@@ -404,10 +423,92 @@ local function CreateGui()
     ShowNotification("Admin Panel Loaded Successfully!")
 end
 
--- Pertama dijalankan
+
+local function handleCommand(cmdMsg)
+    local args = {}
+    for word in string.gmatch(cmdMsg, "%S+") do
+        table.insert(args, word)
+    end
+
+    local cmd = args[1]:lower()
+    if string.sub(cmd, 1, 1) ~= ";" then
+        return
+    end
+    cmd = string.sub(cmd, 2)
+
+    if cmd == "fly" then
+        if args[2] then
+            local targetName = args[2]
+            local targetPlayer = nil
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Name:lower():sub(1, #targetName) == targetName:lower() then
+                    targetPlayer = plr
+                    break
+                end
+            end
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.HumanoidRootPart.Anchored = false
+                targetPlayer.Character.Humanoid.PlatformStand = false
+                targetPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0,50,0)
+                ShowNotification("Fly ON untuk "..targetPlayer.Name)
+            else
+                ShowNotification("Player tidak ditemukan!")
+            end
+        else
+            -- Fly untuk diri sendiri
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.Anchored = false
+                player.Character.Humanoid.PlatformStand = false
+                player.Character.HumanoidRootPart.Velocity = Vector3.new(0,50,0)
+                ShowNotification("Fly ON")
+            end
+        end
+
+    elseif cmd == "unfly" then
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character.HumanoidRootPart.Velocity = Vector3.new(0,0,0)
+            ShowNotification("Fly OFF")
+        end
+
+    elseif cmd == "size" then
+        local scale = tonumber(args[2]) or 1
+        if player.Character then
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Size = part.Size * scale
+                end
+            end
+            ShowNotification("Size set: "..scale)
+        end
+
+    elseif cmd == "tp" or cmd == "teleport" then
+        local targetName = args[2]
+        if not targetName then
+            ShowNotification("Usage: ;tp <player>")
+            return
+        end
+        local targetPlayer = nil
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr.Name:lower():sub(1, #targetName) == targetName:lower() then
+                targetPlayer = plr
+                break
+            end
+        end
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(2,0,0)
+            ShowNotification("Teleported to " .. targetPlayer.Name)
+        else
+            ShowNotification("Player tidak ditemukan!")
+        end
+    end
+end
+
+player.Chatted:Connect(function(msg)
+    handleCommand(msg)
+end)
+
 CreateGui()
 
--- Respawn Handler
 player.CharacterAdded:Connect(function()
     task.wait(1)
     CleanupAll()
