@@ -1,3 +1,4 @@
+-- DEDEKALIGIS--
 local player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
